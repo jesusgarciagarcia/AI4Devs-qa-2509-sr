@@ -2,6 +2,15 @@
 
 This project is a full-stack application with a React frontend and an Express backend using Prisma as an ORM. The frontend is initiated with Create React App, and the backend is written in TypeScript.
 
+## Table of Contents
+
+- [Directory and File Explanation](#directory-and-file-explanation)
+- [Project Structure](#project-structure)
+- [First Steps](#first-steps)
+- [Docker and PostgreSQL](#docker-and-postgresql)
+- [E2E Testing with Playwright](#e2e-testing-with-playwright)
+- [Setting up EC2 and GitHub Actions](#setting-up-ec2-and-github-actions)
+
 ## Directory and File Explanation
 
 - `backend/`: Contains the server-side code written in Node.js.
@@ -56,6 +65,7 @@ To get started with this project, follow these steps:
 
 1. Clone the repo
 2. install the dependencias for frontend and backend
+
 ```sh
 cd frontend
 npm install
@@ -63,28 +73,36 @@ npm install
 cd ../backend
 npm install
 ```
+
 3. Build the backend server
+
 ```
 cd backend
 npm run build
 ````
+
 4. Run the backend server
+
 ```
 cd backend
 npm start
 ```
+
 5. In a new terminal window, build the frontend server:
+
 ```
 cd frontend
 npm run build
 ```
+
 6. Start the frontend server
+
 ```
 cd frontend
 npm start
 ```
 
-The backend server will be running at http://localhost:3010, and the frontend will be available at http://localhost:3000.
+The backend server will be running at <http://localhost:3010>, and the frontend will be available at <http://localhost:3000>.
 
 ## Docker y PostgreSQL
 
@@ -93,6 +111,7 @@ This project uses Docker to run a PostgreSQL database. Here's how to get it up a
 Install Docker on your machine if you haven't done so already. You can download it here.
 Navigate to the root directory of the project in your terminal.
 Run the following command to start the Docker container:
+
 ```
 docker-compose up -d
 ```
@@ -110,6 +129,7 @@ To access the PostgreSQL database, you can use any PostgreSQL client with the fo
 Please replace User, Password, and Database with the actual user, password, and database name specified in your .env file.
 
 To stop the Docker container, run the following command:
+
 ```
 docker-compose down
 ```
@@ -162,6 +182,195 @@ POST http://localhost:3010/candidates
 }
 ```
 
+## E2E Testing with Playwright
+
+This project includes comprehensive End-to-End (E2E) tests using **Playwright** to validate critical user flows.
+
+### Prerequisites for E2E Tests
+
+Before running E2E tests, ensure the following:
+
+1. **Dependencies Installed**:
+
+   ```bash
+   # Install project dependencies (if not already done)
+   npm install
+
+   # Install Playwright browsers
+   npx playwright install
+   ```
+
+2. **Database Seeded**:
+
+   ```bash
+   cd backend
+   npx prisma generate
+   npx prisma migrate dev
+   ts-node prisma/seed.ts
+   cd ..
+   ```
+
+3. **Backend Running**:
+
+   ```bash
+   cd backend
+   npm start
+   # Should be running on http://localhost:3010
+   ```
+
+4. **Frontend Running** (in a separate terminal):
+
+   ```bash
+   cd frontend
+   npm start
+   # Should be running on http://localhost:3000
+   ```
+
+### Running E2E Tests
+
+Once both backend and frontend are running, execute tests from the **project root**:
+
+```bash
+# Run all E2E tests
+npm run test:e2e
+
+# Run tests in UI mode (interactive)
+npm run test:e2e:ui
+
+# Run specific test file
+npx playwright test playwright/integration/position.spec.js
+
+# Run tests in a specific browser
+npx playwright test --project=chromium
+npx playwright test --project=firefox
+npx playwright test --project=webkit
+
+# Run tests in headed mode (see browser)
+npx playwright test --headed
+
+# Debug a specific test
+npx playwright test --debug
+```
+
+### Viewing Test Reports
+
+After running tests, view the HTML report:
+
+```bash
+# Open the HTML report
+npm run test:e2e:report
+
+# Or directly
+npx playwright show-report
+```
+
+The report includes:
+
+- ✅ Test results (passed/failed)
+- 📸 Screenshots (on failure)
+- 🎥 Videos (on failure)
+- 📊 Trace files (for debugging)
+
+### Test Structure
+
+```
+playwright/
+  integration/
+    position.spec.js       # Position management E2E tests
+tests/
+  e2e/
+    pages/
+      DashboardPage.ts     # Page Object Model for Dashboard
+      PositionsListPage.ts # Page Object Model for Positions List
+      PositionDetailsPage.ts # Page Object Model for Position Details (Kanban)
+```
+
+### Available E2E Test Scenarios
+
+1. **Position Page Load** (`position.spec.js`)
+   - Verifies positions page loads correctly
+   - Validates visible elements (title, filters, position cards)
+   - Uses observable conditions (no blind waits)
+
+2. **Candidate Stage Change** (`position.spec.js`)
+   - Complete drag-and-drop workflow
+   - Moves candidate between interview stages
+   - Validates state change with observable assertions
+   - Verifies API integration
+
+3. **Navigation Workflow** (`position.spec.js`)
+   - Dashboard → Positions → Position Details → Back navigation
+   - Validates routing and back buttons
+
+### Test Data
+
+Tests rely on **seeded database data**:
+
+- At least one position (ID: 1)
+- Multiple interview stages per position
+- At least one candidate assigned to a position
+
+If tests fail due to missing data:
+
+```bash
+cd backend
+ts-node prisma/seed.ts
+```
+
+### Best Practices Applied
+
+✅ **No blind waits** - Uses `expect().toBeVisible()`, `toHaveURL()`, `toContainText()`
+✅ **Stable selectors** - `data-testid` attributes added to components
+✅ **Page Object Models** - Reusable, maintainable test code
+✅ **Observable conditions** - All assertions wait for actual state changes
+✅ **Evidence capture** - Screenshots, traces, and videos on failure
+✅ **Multi-browser support** - Chromium, Firefox, WebKit configured
+
+### Troubleshooting
+
+**Tests fail with "Timeout":**
+
+- Ensure backend and frontend are running
+- Check database is seeded: `cd backend && ts-node prisma/seed.ts`
+- Verify URLs: frontend on `:3000`, backend on `:3010`
+
+**Drag-and-drop tests fail:**
+
+- `react-beautiful-dnd` requires specific browser interactions
+- Check that candidate cards have `data-testid` attributes
+- Verify API endpoint `/candidates/:id` (PUT) is working
+
+**No test data:**
+
+- Run seed script: `cd backend && ts-node prisma/seed.ts`
+- Verify database connection in `backend/.env`
+
+### CI/CD Integration
+
+To run E2E tests in CI pipelines, use the following pattern:
+
+```yaml
+# Example GitHub Actions workflow
+- name: Install dependencies
+  run: npm install && npx playwright install --with-deps
+
+- name: Start backend
+  run: cd backend && npm start &
+
+- name: Start frontend
+  run: cd frontend && npm start &
+
+- name: Run E2E tests
+  run: npm run test:e2e
+
+- name: Upload test results
+  uses: actions/upload-artifact@v3
+  if: always()
+  with:
+    name: playwright-report
+    path: playwright-report/
+```
+
 ## Setting up EC2 and GitHub Actions
 
 To run this project on an EC2 instance and ensure GitHub Actions works correctly, follow these steps:
@@ -169,42 +378,55 @@ To run this project on an EC2 instance and ensure GitHub Actions works correctly
 ### EC2 Configuration
 
 1. **Create an EC2 Instance**:
-  - Log in to the AWS console and navigate to EC2.
-  - Launch a new instance using an Amazon Linux 2 or Ubuntu AMI.
+
+- Log in to the AWS console and navigate to EC2.
+- Launch a new instance using an Amazon Linux 2 or Ubuntu AMI.
   -Make sure to select an appropriate instance type (e.g., `t2.micro` for testing).
 
 2.**Configure the Security Group**:
-  - Ensure that the security group associated with your instance allows traffic on the following ports:
-    - **22**: For SSH (remote access).
-    - **80**: For HTTP (if you are using Nginx or a web server).
-    - **8080**: For the backend (port where your application runs).
-  - You can add inbound rules in the security group to allow access from any IP (0.0.0.0/0) for development purposes, but consider restricting it in production.
 
-3. **Install Dependencies on EC2**:
-  - Connect to your EC2 instance via SSH:
+- Ensure that the security group associated with your instance allows traffic on the following ports:
+  - **22**: For SSH (remote access).
+  - **80**: For HTTP (if you are using Nginx or a web server).
+  - **8080**: For the backend (port where your application runs).
+- You can add inbound rules in the security group to allow access from any IP (0.0.0.0/0) for development purposes, but consider restricting it in production.
+
+1. **Install Dependencies on EC2**:
+
+- Connect to your EC2 instance via SSH:
+
     ```
     ssh -i your-key.pem ec2-user@your-ec2-public-ip
     ```
-  - Install Node.js and npm:
+
+- Install Node.js and npm:
+
     ```
     curl -sL https://rpm.nodesource.com/setup_16.x | sudo bash -
     sudo yum install -y nodejs
     ```
-  - Install PM2 to manage your application:
+
+- Install PM2 to manage your application:
+
     ```
     sudo npm install -g pm2
     ```
-  - Install Nginx if you need it:
+
+- Install Nginx if you need it:
+
     ```
     sudo yum install -y nginx
     ```
 
 4.**Configure Environment Variables**:
-  - Create a `.env` file in the backend root directory with the following variables:
+
+- Create a `.env` file in the backend root directory with the following variables:
+
     ```
     DATABASE_URL=postgresql://user:password@localhost:5432/mydatabase
     ```
-  - Make sure to replace `user`, `password`, and `mydatabase` with the correct values.
+
+- Make sure to replace `user`, `password`, and `mydatabase` with the correct values.
 
 ### Variables in GitHub Actions
 
@@ -213,6 +435,7 @@ For the GitHub Actions workflow to work correctly, you must set the following va
 1. **AWS_ACCESS_ID**: Your AWS access key ID.
 2. **AWS_ACCESS_KEY**: Your AWS secret access key.
 3. **EC2_INSTANCE**: The public IP address or DNS name of your EC2 instance.
+
 ### ⚠️ IMPORTANT: Development Workflow
 
 **Before creating a Pull Request, you should make sure that everything works correctly in your fork:**
@@ -308,13 +531,13 @@ Las especificaciones de todos los endpoints de API los tienes en [api-spec.yaml]
 
 La descripción y diagrama del modelo de datos los tienes en [ModeloDatos.md](./backend/ModeloDatos.md).
 
-
 ## Primeros Pasos
 
 Para comenzar con este proyecto, sigue estos pasos:
 
 1. Clona el repositorio.
 2. Instala las dependencias para el frontend y el backend:
+
 ```sh
 cd frontend
 npm install
@@ -322,28 +545,36 @@ npm install
 cd ../backend
 npm install
 ```
+
 3. Construye el servidor backend:
+
 ```
 cd backend
 npm run build
 ````
+
 4. Inicia el servidor backend:
+
 ```
 cd backend
 npm start
 ```
+
 5. En una nueva ventana de terminal, construye el servidor frontend:
+
 ```
 cd frontend
 npm run build
 ```
+
 6. Inicia el servidor frontend:
+
 ```
 cd frontend
 npm start
 ```
 
-El servidor backend estará corriendo en http://localhost:3010 y el frontend estará disponible en http://localhost:3000.
+El servidor backend estará corriendo en <http://localhost:3010> y el frontend estará disponible en <http://localhost:3000>.
 
 ## Docker y PostgreSQL
 
@@ -352,12 +583,15 @@ Este proyecto usa Docker para ejecutar una base de datos PostgreSQL. Así es có
 Instala Docker en tu máquina si aún no lo has hecho. Puedes descargarlo desde aquí.
 Navega al directorio raíz del proyecto en tu terminal.
 Ejecuta el siguiente comando para iniciar el contenedor Docker:
+
 ```
 docker-compose up -d
 ```
+
 Esto iniciará una base de datos PostgreSQL en un contenedor Docker. La bandera -d corre el contenedor en modo separado, lo que significa que se ejecuta en segundo plano.
 
 Para acceder a la base de datos PostgreSQL, puedes usar cualquier cliente PostgreSQL con los siguientes detalles de conexión:
+
 - Host: localhost
 - Port: 5432
 - User: postgres
@@ -367,6 +601,7 @@ Para acceder a la base de datos PostgreSQL, puedes usar cualquier cliente Postgr
 Por favor, reemplaza User, Password y Database con el usuario, la contraseña y el nombre de la base de datos reales especificados en tu archivo .env.
 
 Para detener el contenedor Docker, ejecuta el siguiente comando:
+
 ```
 docker-compose down
 ```
@@ -378,6 +613,7 @@ Para generar la base de datos utilizando Prisma, sigue estos pasos:
 2. Abre una terminal y navega al directorio del backend donde se encuentra el archivo `schema.prisma` y `seed.ts`.
 
 3. Ejecuta los siguientes comandos para generar la estructura de prisma, las migraciones a tu base de datos y poblarla con datos de ejemplo:
+
 ```
 npx prisma generate
 npx prisma migrate dev
@@ -418,7 +654,6 @@ POST http://localhost:3010/candidates
 }
 ```
 
-
 ## Configuración de EC2 y GitHub Actions
 
 Para ejecutar este proyecto en una instancia EC2 y asegurarte de que GitHub Actions funcione correctamente, sigue estos pasos:
@@ -426,42 +661,55 @@ Para ejecutar este proyecto en una instancia EC2 y asegurarte de que GitHub Acti
 ### Configuración de EC2
 
 1. **Crear una Instancia EC2**:
-  - Inicia sesión en la consola de AWS y navega a EC2.
-  - Lanza una nueva instancia utilizando una AMI de Amazon Linux 2 o Ubuntu.
-  - Asegúrate de seleccionar un tipo de instancia adecuado (por ejemplo, `t2.micro` para pruebas).
 
-2. **Configurar el Grupo de Seguridad**:
-  - Asegúrate de que el grupo de seguridad asociado a tu instancia permita el tráfico en los siguientes puertos:
-    - **22**: Para SSH (acceso remoto).
-    - **80**: Para HTTP (si estás usando Nginx o un servidor web).
-    - **8080**: Para el backend (puerto donde se ejecuta tu aplicación).
-  - Puedes agregar reglas de entrada en el grupo de seguridad para permitir el acceso desde cualquier IP (0.0.0.0/0) para propósitos de desarrollo, pero considera restringirlo en producción.
+- Inicia sesión en la consola de AWS y navega a EC2.
+- Lanza una nueva instancia utilizando una AMI de Amazon Linux 2 o Ubuntu.
+- Asegúrate de seleccionar un tipo de instancia adecuado (por ejemplo, `t2.micro` para pruebas).
 
-3. **Instalar Dependencias en EC2**:
-  - Conéctate a tu instancia EC2 a través de SSH:
+1. **Configurar el Grupo de Seguridad**:
+
+- Asegúrate de que el grupo de seguridad asociado a tu instancia permita el tráfico en los siguientes puertos:
+  - **22**: Para SSH (acceso remoto).
+  - **80**: Para HTTP (si estás usando Nginx o un servidor web).
+  - **8080**: Para el backend (puerto donde se ejecuta tu aplicación).
+- Puedes agregar reglas de entrada en el grupo de seguridad para permitir el acceso desde cualquier IP (0.0.0.0/0) para propósitos de desarrollo, pero considera restringirlo en producción.
+
+1. **Instalar Dependencias en EC2**:
+
+- Conéctate a tu instancia EC2 a través de SSH:
+
     ```
     ssh -i your-key.pem ec2-user@your-ec2-public-ip
     ```
-  - Instala Node.js y npm:
+
+- Instala Node.js y npm:
+
     ```
     curl -sL https://rpm.nodesource.com/setup_16.x | sudo bash -
     sudo yum install -y nodejs
     ```
-  - Instala PM2 para gestionar tu aplicación:
+
+- Instala PM2 para gestionar tu aplicación:
+
     ```
     sudo npm install -g pm2
     ```
-  - Instala Nginx si lo necesitas:
+
+- Instala Nginx si lo necesitas:
+
     ```
     sudo yum install -y nginx
     ```
 
-4. **Configurar Variables de Entorno**:
-  - Crea un archivo `.env` en el directorio raíz del backend con las siguientes variables:
+1. **Configurar Variables de Entorno**:
+
+- Crea un archivo `.env` en el directorio raíz del backend con las siguientes variables:
+
     ```
     DATABASE_URL=postgresql://user:password@localhost:5432/mydatabase
     ```
-  - Asegúrate de reemplazar `user`, `password` y `mydatabase` con los valores correctos.
+
+- Asegúrate de reemplazar `user`, `password` y `mydatabase` con los valores correctos.
 
 ### Variables en GitHub Actions
 
@@ -470,6 +718,7 @@ Para que el flujo de trabajo de GitHub Actions funcione correctamente, debes con
 1. **AWS_ACCESS_ID**: Tu ID de clave de acceso de AWS.
 2. **AWS_ACCESS_KEY**: Tu clave de acceso secreta de AWS.
 3. **EC2_INSTANCE**: La dirección IP pública o el nombre DNS de tu instancia EC2.
+
 ### ⚠️ IMPORTANTE: Flujo de Trabajo para el Desarrollo
 
 **Antes de crear un Pull Request, debes asegurarte de que todo funcione correctamente en tu fork:**

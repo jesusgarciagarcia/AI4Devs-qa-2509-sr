@@ -44,11 +44,11 @@ const Positions: React.FC = () => {
     };
 
     return (
-        <Container className="mt-5">
-            <Button variant="link" onClick={() => navigate('/')} className="mb-3">
+        <Container className="mt-5" data-testid="positions-page">
+            <Button variant="link" onClick={() => navigate('/')} className="mb-3" data-testid="back-to-dashboard-btn">
                 Volver al Dashboard
             </Button>
-            <h2 className="text-center mb-4">Posiciones</h2>
+            <h2 className="text-center mb-4" data-testid="positions-title">Posiciones</h2>
             <Row className="mb-4">
                 <Col md={3}>
                     <Form.Control type="text" placeholder="Buscar por título" />
@@ -74,10 +74,10 @@ const Positions: React.FC = () => {
                     </Form.Control>
                 </Col>
             </Row>
-            <Row>
+            <Row data-testid="positions-list">
                 {positions.map((position, index) => (
                     <Col md={4} key={index} className="mb-4">
-                        <Card className="shadow-sm">
+                        <Card className="shadow-sm" data-testid={`position-card-${position.id}`}>
                             <Card.Body>
                                 <Card.Title>{position.title}</Card.Title>
                                 <Card.Text>

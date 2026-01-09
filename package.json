@@ -1,4 +1,13 @@
 {
+  "name": "lti-talent-tracking",
+  "version": "1.0.0",
+  "description": "LTI Talent Tracking System with E2E tests",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report",
+    "test:e2e:codegen": "playwright codegen http://localhost:3000"
+  },
   "dependencies": {
     "dotenv": "^16.4.5"
   },
@@ -6,5 +15,6 @@
     "schema": "backend/prisma/schema.prisma"
   },
   "devDependencies": {
+    "@playwright/test": "^1.48.2"
   }
 }
